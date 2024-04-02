@@ -96,7 +96,7 @@ for student in np.arange(1,2):
         # check if current path is a file
         if os.path.isfile(os.path.join(dir_path, path)):
             num_files += 1
-    while c < 5 and not f:
+    while c < num_files and not f:
         print("Sample:", c)
         score_points = np.load("Cat/st" + str(student) + "/scores/" + str(c) + "score.npy", allow_pickle=True)
         if score_points.size == 0:
@@ -194,7 +194,7 @@ for student in np.arange(1,2):
                     x = g[0] / 2**int(compressions)
                     y = g[1] / 2**int(compressions)
                     
-                    if ((x,y)) not in green:
+                    if ((x,y)) not in seen:
                         seen.add((x,y))
                         green.append((x, y))
                         greenx.append(x)
