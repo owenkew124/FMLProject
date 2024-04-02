@@ -31,23 +31,19 @@ from PIL import Image
 from segment_anything import sam_model_registry, SamPredictor
 import matplotlib
 
-def downSampleImage(image):
+def downSampleImage(image, compressions):
     maxPool = torch.nn.AvgPool2d(2,2)
     imageTensor = torch.from_numpy(image)
     imageTensor = imageTensor.permute(2, 0, 1)
     imageTensor = imageTensor.float().unsqueeze(dim=0)
-    #imageTensorDone,indices = maxPool(imageTensor)
     for compr in range(int(compressions)):
         imageTensor = maxPool(imageTensor)
-
     no_batch = imageTensor.byte().squeeze(dim=0)
-
-    # Unpermute
     imTens = no_batch.permute(1, 2, 0)
     imageDown = imTens.numpy()
     return imageDown
 
-def upSampleMask(mask):
+def upSampleMask(mask, imshape):
     maxunPool = torch.nn.Upsample(size=imshape, mode='nearest')
     imageTensor = torch.from_numpy(mask)
     imageTensor = imageTensor.float().unsqueeze(dim=0)
@@ -161,7 +157,7 @@ for student in np.arange(1,2):
         #maxPool = torch.nn.MaxPool2d(2,2,return_indices=True)
         
         
-        imageDown = downSampleImage(image)
+        imageDown = downSampleImage(image, compressions)
         
         label = labels[c]  # GT for sample c
         rmv = False
@@ -255,7 +251,7 @@ for student in np.arange(1,2):
                 # print("Time in seconds since the epoch:", time_sec) 
                     mask = masks[0]
 
-                    mask = upSampleMask(mask)
+                    mask = upSampleMask(mask,imshape)
                     
                     # get_ipython().run_line_magic('matplotlib', 'inline')
                     
