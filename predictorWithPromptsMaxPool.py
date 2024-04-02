@@ -31,6 +31,35 @@ from PIL import Image
 from segment_anything import sam_model_registry, SamPredictor
 import matplotlib
 
+def downSampleImage(image):
+    maxPool = torch.nn.AvgPool2d(2,2)
+    imageTensor = torch.from_numpy(image)
+    imageTensor = imageTensor.permute(2, 0, 1)
+    imageTensor = imageTensor.float().unsqueeze(dim=0)
+    #imageTensorDone,indices = maxPool(imageTensor)
+    for compr in range(int(compressions)):
+        imageTensor = maxPool(imageTensor)
+
+    no_batch = imageTensor.byte().squeeze(dim=0)
+
+    # Unpermute
+    imTens = no_batch.permute(1, 2, 0)
+    imageDown = imTens.numpy()
+    return imageDown
+
+def upSampleMask(mask):
+    maxunPool = torch.nn.Upsample(size=imshape, mode='nearest')
+    imageTensor = torch.from_numpy(mask)
+    imageTensor = imageTensor.float().unsqueeze(dim=0)
+    imageTensor = imageTensor.float().unsqueeze(dim=0)
+    imageTensorDone = maxunPool(imageTensor)
+    no_batch = imageTensorDone.long().squeeze(dim=0)
+    imTens = no_batch.long().squeeze(dim=0)
+    imageUp = imTens.numpy()
+    mask = imageUp.astype(int)
+    return mask
+
+
 plt.rcParams['keymap.grid'].remove('g')
 plt.rcParams['keymap.home'].remove('r')
 
@@ -130,19 +159,9 @@ for student in np.arange(1,2):
             image = cv2.cvtColor((np.array(((image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
         imshape = image.shape[0],image.shape[1]
         #maxPool = torch.nn.MaxPool2d(2,2,return_indices=True)
-        maxPool = torch.nn.AvgPool2d(2,2)
-        imageTensor = torch.from_numpy(image)
-        imageTensor = imageTensor.permute(2, 0, 1)
-        imageTensor = imageTensor.float().unsqueeze(dim=0)
-        #imageTensorDone,indices = maxPool(imageTensor)
-        for compr in range(int(compressions)):
-            imageTensor = maxPool(imageTensor)
-
-        no_batch = imageTensor.byte().squeeze(dim=0)
-
-        # Unpermute
-        imTens = no_batch.permute(1, 2, 0)
-        imageDown = imTens.numpy()
+        
+        
+        imageDown = downSampleImage(image)
         
         label = labels[c]  # GT for sample c
         rmv = False
@@ -235,16 +254,9 @@ for student in np.arange(1,2):
                     # Print the time  
                 # print("Time in seconds since the epoch:", time_sec) 
                     mask = masks[0]
-                    maxunPool = torch.nn.Upsample(size=imshape, mode='nearest')
-                    imageTensor = torch.from_numpy(mask)
-                    imageTensor = imageTensor.float().unsqueeze(dim=0)
-                    imageTensor = imageTensor.float().unsqueeze(dim=0)
-                    imageTensorDone = maxunPool(imageTensor)
-                    no_batch = imageTensorDone.long().squeeze(dim=0)
-                    imTens = no_batch.long().squeeze(dim=0)
-                    imageUp = imTens.numpy()
-                    mask = imageUp.astype(int)
 
+                    mask = upSampleMask(mask)
+                    
                     # get_ipython().run_line_magic('matplotlib', 'inline')
                     
                     intersection = (mask & label).sum()
