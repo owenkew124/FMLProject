@@ -112,7 +112,9 @@ for student in np.arange(1,2):
     ws = wb.active
     ws['A1'] = 'Sample Number'
     ws['B1'] = 'Scores'
-    ws['C1'] = 'Times'
+    ws['C1'] = 'Times Total'
+    ws['D1'] = 'Times for Setting Image'
+    ws['E1'] = 'Times for Predicting'
     c=0
     num_files = 0
     dir_path = dataset_name + "/st" + str(student) + "/scores/"
@@ -181,6 +183,8 @@ for student in np.arange(1,2):
         red = []
         greenx = []
         times = []
+        timesp1 = []
+        timesp2 = []
         
         redx = []
         greeny = []
@@ -246,6 +250,8 @@ for student in np.arange(1,2):
                     )
                     time_part2 = time.time() - time_part2i
                     times.append(time_part1 + time_part2)
+                    timesp1.append(time_part1)
+                    timesp2.append(time_part2)
                     
                     # Print the time  
                 # print("Time in seconds since the epoch:", time_sec) 
@@ -321,6 +327,8 @@ for student in np.arange(1,2):
                     )
                     time_part2 = time.time() - time_part2i
                     times.append(time_part1 + time_part2)
+                    timesp1.append(time_part1)
+                    timesp2.append(time_part2)
                     
 
                     mask = masks[0]
@@ -369,12 +377,16 @@ for student in np.arange(1,2):
         indx = np.argsort(-np.array(score))
         sscore = np.array(score)[indx]
         times_2 = np.array(times)[indx]
+        times_2p1 = np.array(timesp1)[indx]
+        times_2p2 = np.array(timesp2)[indx]
         snr = np.array(nr)[indx]
         sstdx = np.array(stdx)[indx]
         sstdy = np.array(stdy)[indx]
         ws['A' + str(c + 2)] = str(c)
         ws['B' + str(c + 2)] = sscore[0]  # samples name on excel
         ws['C' + str(c + 2)] = times_2[0]
+        ws['D' + str(c + 2)] = times_2p1[0]
+        ws['E' + str(c + 2)] = times_2p2[0]
         c += 1
         
     wb.save(os.path.join(name, 'st' + str(student) + name + '.xlsx'))
