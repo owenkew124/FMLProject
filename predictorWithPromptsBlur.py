@@ -31,20 +31,6 @@ from PIL import Image
 from segment_anything import sam_model_registry, SamPredictor
 import matplotlib
 
-## Rescale the image and mask using Torch Interpolation
-def RescaleImage(image, size, mode='nearest'):
-    imageRawTensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0).float()
-    imageRescaleTensor = torch.nn.functional.interpolate(imageRawTensor, size=size, mode=mode)
-    imageRescale = imageRescaleTensor[0].permute(1, 2, 0).byte().numpy()
-    return imageRescale
-
-def RescaleMask(maskBool, size, mode='nearest'):
-    maskRawTensor = torch.from_numpy(maskBool).unsqueeze(0).unsqueeze(0).float()
-    maskRescaleTensor = torch.nn.functional.interpolate(maskRawTensor, size=size, mode=mode)
-    maskRescale = maskRescaleTensor[0,0].numpy()
-    maskRescaleBool = maskRescale > 0.5
-    return maskRescaleBool
-
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -68,10 +54,9 @@ sam.to(device=device)
 predictor = SamPredictor(sam)
 
 ########################## Set User Parameters ##########################
-dataset_name = "Bus" # "Cat", "Bus", "Dolphin below"
+dataset_name = "Dolphin below" # "Cat", "Bus", "Dolphin below"
 max_samples = 5
-rescale_ratio = 0.5
-mode = 'area'
+blur_ratio = 7
 #########################################################################
 
 names = np.load(dataset_name+"/samples.npy", allow_pickle=True)
@@ -136,24 +121,24 @@ for student in np.arange(1,2):
         
         ## Load Image
         image = names[c]  # samples c
+        if len(image.shape) == 2:
+                image = cv2.cvtColor((np.array(((image + 1) / 2) * 255, dtype='uint8')), cv2.COLOR_GRAY2RGB)
         imshape = image.shape[0],image.shape[1]
         if np.max(image) < 2:
-            image = np.array(((image + 1) / 2) * 255, dtype='uint8')
+            image = np.array(((image + 1) / 2) * 255, dtype='uint8')    
             
         ## Downsample the image
-        imreshape = (int(imshape[0] * rescale_ratio), int(imshape[1] * rescale_ratio))
-        imageDown = RescaleImage(image, imreshape, mode)
+        imageBlur = cv2.GaussianBlur(image,(blur_ratio,blur_ratio),0)
         
         ## Load Label
         label = labels[c]  # GT for sample c
         label = label == 1
         mask = 0
         
-        plt.imshow(imageDown)
         ## Set Downsampled Image
         time_part1i = time.time()
         
-        predictor.set_image(imageDown)
+        predictor.set_image(imageBlur)
 
         time_part1 = time.time() - time_part1i
         
@@ -163,8 +148,8 @@ for student in np.arange(1,2):
         greenx = []
         greeny = []
         for g in green_points:
-            x = g[0] * rescale_ratio
-            y = g[1] * rescale_ratio
+            x = g[0]
+            y = g[1]
             green.append((x, y))
             greenx.append(x)
             greeny.append(y)
@@ -173,8 +158,8 @@ for student in np.arange(1,2):
         redx = []
         redy = []
         for r in red_points:
-            x = r[0] * rescale_ratio
-            y = r[1] * rescale_ratio
+            x = r[0]
+            y = r[1]
             red.append((x, y))
             redx.append(x)
             redy.append(y)
@@ -193,11 +178,8 @@ for student in np.arange(1,2):
             )
             time_part2 = time.time() - time_part2i
             
-            ## Upsample the mask
-            maskDown = masks[0]
-            mask = RescaleMask(maskDown, imshape, mode)
-            
             ## Score calculation
+            mask = masks[0]
             intersection = (mask & label).sum()
             union = (mask | label).sum()
             if intersection == 0:
@@ -213,7 +195,7 @@ for student in np.arange(1,2):
         
         fig, ax = plt.subplots(1, 3, figsize=(15, 7))
         if green and red:
-            ax[0].imshow(imageDown)
+            ax[0].imshow(imageBlur)
             ax[1].imshow(label)
             ax[2].imshow(image)
             show_mask(mask, ax[1])
